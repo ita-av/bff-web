@@ -15,10 +15,10 @@ def get_rest_service(authorization: Optional[str] = Header(None)) -> RestService
     return RestService(auth_token=token)
 
 
-def get_grpc_service(auth_token: Optional[str] = Header(None)) -> GrpcService:
+def get_grpc_service(authorization: Optional[str] = Header(None)) -> GrpcService:
     token = None
-    if auth_token and auth_token.startswith("Bearer "):
-        token = auth_token.replace("Bearer ", "")
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
     return GrpcService(auth_token=token)
 
 
@@ -71,11 +71,11 @@ async def create_booking(
 
 @router.get("/bookings")
 async def get_user_bookings(
-    user_id: str,
+    query: Dict[str, Any],
     grpc_service: GrpcService = Depends(get_grpc_service),
 ):
     try:
-        grpc_result = await grpc_service.get_user_bookings(user_id)
+        grpc_result = await grpc_service.get_user_bookings(query)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"gRPC service error: {str(e)}")
 
@@ -84,12 +84,11 @@ async def get_user_bookings(
 
 @router.get("/barber/bookings")
 async def get_barber_bookings(
-    barber_id: str,
-    date: Optional[str] = None,
+    query: Dict[str, Any],
     grpc_service: GrpcService = Depends(get_grpc_service),
 ):
     try:
-        grpc_result = await grpc_service.get_barber_bookings(barber_id, date)
+        grpc_result = await grpc_service.get_barber_bookings(query)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"gRPC service error: {str(e)}")
 

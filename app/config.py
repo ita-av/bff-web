@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     REST_SERVICE_TIMEOUT: int = 60
 
     # gRPC service settings
-    GRPC_SERVICE_HOST: str = "http://localhost"
+    GRPC_SERVICE_HOST: str = "localhost"
     GRPC_SERVICE_PORT: int = 50051
 
 

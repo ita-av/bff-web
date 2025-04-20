@@ -1,25 +1,18 @@
 import grpc
-from app.proto import booking_pb2, booking_pb2_grpc
 
 from app.config import settings
+from app.proto import booking_pb2, booking_pb2_grpc
 
 
 class GrpcService:
     def __init__(self, auth_token: str = None):
+        self.channel = grpc.insecure_channel(
+            f"{settings.GRPC_SERVICE_HOST}:{settings.GRPC_SERVICE_PORT}"
+        )
         if auth_token:
-            credentials = grpc.access_token_call_credentials(auth_token)
-            channel_credentials = grpc.composite_channel_credentials(
-                grpc.ssl_channel_credentials(), credentials
-            )
-            self.channel = grpc.aio.secure_channel(
-                f"{settings.GRPC_SERVICE_HOST}:{settings.GRPC_SERVICE_PORT}",
-                channel_credentials,
-            )
+            self.metadata = [("authorization", f"Bearer {auth_token}")]
         else:
-            # testing insecure channel without auth token
-            self.channel = grpc.aio.insecure_channel(
-                f"{settings.GRPC_SERVICE_HOST}:{settings.GRPC_SERVICE_PORT}"
-            )
+            self.metadata = None
 
         self.booking_stub = booking_pb2_grpc.BookingServiceStub(self.channel)
 
@@ -35,40 +28,38 @@ class GrpcService:
             - service_type: Enum
             - notes
         """
-        # Convert service_type from string to enum value if needed
-        service_type = booking_data.get("service_type")
-        if isinstance(service_type, str):
-            service_type = getattr(booking_pb2.ServiceType, service_type, 0)
+        if not self.metadata:
+            raise Exception("No auth token provided")
 
-        # Create the request message
         request = booking_pb2.CreateBookingRequest(
             user_id=booking_data.get("user_id"),
             barber_id=booking_data.get("barber_id"),
             start_time=booking_data.get("start_time"),
-            service_type=service_type,
+            service_type=booking_data.get("service_type"),
             notes=booking_data.get("notes", ""),
         )
 
-        # Call the gRPC method
-        response = await self.booking_stub.CreateBooking(request)
-
-        # to dict
+        response = self.booking_stub.CreateBooking(request, metadata=self.metadata)
         return self._booking_to_dict(response)
 
-    async def get_user_bookings(self, user_id: str):
-        request = booking_pb2.GetUserBookingsRequest(user_id=user_id)
-        response = await self.booking_stub.GetUserBookings(request)
+    async def get_user_bookings(self, query: dict):
+        if not self.metadata:
+            raise Exception("No auth token provided")
 
-        # Convert the response to a list of dicts
+        request = booking_pb2.GetUserBookingsRequest(user_id=query.get("user_id", 0))
+        response = self.booking_stub.GetUserBookings(
+            request, metadata=self.metadata
+        )
         return [self._booking_to_dict(booking) for booking in response.bookings]
 
-    async def get_barber_bookings(self, barber_id: str, date: str = None):
-        request = booking_pb2.GetBarberBookingsRequest(
-            barber_id=barber_id, date=date or ""
-        )
-        response = await self.booking_stub.GetBarberBookings(request)
+    async def get_barber_bookings(self, query: dict):
+        if not self.metadata:
+            raise Exception("No auth token provided")
 
-        # Convert the response to a list of dicts
+        request = booking_pb2.GetBarberBookingsRequest(
+            barber_id=query.get("barber_id", 0)
+        )
+        response = self.booking_stub.GetBarberBookings(request, metadata=self.metadata)
         return [self._booking_to_dict(booking) for booking in response.bookings]
 
     def _booking_to_dict(self, booking):

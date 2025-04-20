@@ -54,7 +54,7 @@ class BookingServiceStub(object):
                 request_serializer=booking__pb2.CancelBookingRequest.SerializeToString,
                 response_deserializer=booking__pb2.CancelBookingResponse.FromString,
                 _registered_method=True)
-        self.Getings = channel.unary_unary(
+        self.GetUserBookings = channel.unary_unary(
                 '/booking.BookingService/GetUserBookings',
                 request_serializer=booking__pb2.GetUserBookingsRequest.SerializeToString,
                 response_deserializer=booking__pb2.BookingList.FromString,
